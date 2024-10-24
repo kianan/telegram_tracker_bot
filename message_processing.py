@@ -6,6 +6,8 @@ from fuzzywuzzy import process, fuzz
 import spacy
 import dateparser
 from datetime import datetime
+import aiohttp
+import asyncio
 
 # Configure logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -18,7 +20,7 @@ ollama_api_url = "http://localhost:11434/api/generate"  # Assuming Ollama runs l
 nlp = spacy.load('en_core_web_lg')
 
 # Function to call local Llama model
-def call_local_llama_model(user_message):
+async def call_local_llama_model(user_message):
     headers = {"Content-Type": "application/json"}
     prompt = f"""Extract the following details as clean JSON: Amount, Date, Category, Account.
     Do not include any other text.
@@ -32,18 +34,21 @@ def call_local_llama_model(user_message):
     }
 
     try:
-        response = requests.post(ollama_api_url, headers=headers, data=json.dumps(payload))
-        response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(ollama_api_url, headers=headers, json=payload) as response:
+                response_text = await response.text()
+                if response.status != 200:
+                    logger.error(f"Failed to call local model: {response.status} {response_text}")
+                    return None
 
-        logger.info(f"Raw response content: {response.text}")
+                logger.info(f"Raw response content: {response_text}")
 
-        response_json = response.json()  # Attempt to parse response as JSON
-        logger.info(f"{response_json}")
+                response_json = await response.json()  # Attempt to parse response as JSON
+                logger.info(f"{response_json}")
 
-        return json.loads(response_json.get("response"))
-        # return response.json().get("response")
-    except requests.RequestException as e:
-        logger.error(f"Failed to call local model: {e}")
+                return json.loads(response_json.get("response"))
+    except (aiohttp.ClientError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to call local model or parse response: {e}")
         return None
 
 # Function to process message using fuzzywuzzy and SpaCy
@@ -99,8 +104,8 @@ def process_message_fuzzywuzzy(user_message):
     }
 
 # Function to process message using Ollama Llama model
-def process_message_ollama(user_message):
-    response = call_local_llama_model(user_message)
+async def process_message_ollama(user_message):
+    response = await call_local_llama_model(user_message)
     if response:
         logger.info(f"Extracted data from Llama - {response}")
         return response

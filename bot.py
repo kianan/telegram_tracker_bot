@@ -47,7 +47,7 @@ async def handle_message(update: Update, context):
         return
 
     # Process the message using fuzzywuzzy method
-    parsed_data = process_message_ollama(user_message)
+    parsed_data = await process_message_ollama(user_message)
     if parsed_data:
         # change all keys to lowercase
         parsed_data = {k.lower(): v for k, v in parsed_data.items()}
