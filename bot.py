@@ -1,6 +1,7 @@
 import os
 import logging
 import spacy
+import dateparser
 from datetime import datetime
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
@@ -13,6 +14,9 @@ load_dotenv()
 # Your bot token from BotFather
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
+# List of authorized usernames
+AUTHORIZED_USERNAMES = os.getenv('AUTHORIZED_USERNAMES', '').split(',')
+
 # Configure logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,10 +28,22 @@ nlp = spacy.load('en_core_web_lg')
 async def start(update: Update, context):
     await update.message.reply_text('Hi! I am Kian Tracker Bot. How can I help you?')
 
+def is_user_authorized(username):
+    if username not in AUTHORIZED_USERNAMES:
+        logger.warning(f"Unauthorized user: {username}")
+        return False
+    return True
+
 # Function to handle text messages
 async def handle_message(update: Update, context):
     user_message = update.message.text
-    logger.info(f"Received message: {user_message}")  # Log the message to the console
+    logger.info(f"Received message: {update.message.from_user.username} {user_message}")  # Log the message to the console
+
+    username = update.message.from_user.username
+    if not is_user_authorized(username):
+        logger.warning(f"Unauthorized user: {username}")
+        await update.message.reply_text("You are not authorized to use this bot.")
+        return
 
     # Use SpaCy to parse the message
     doc = nlp(user_message)
@@ -43,6 +59,9 @@ async def handle_message(update: Update, context):
             amount = ent.text
         elif ent.label_ == "DATE":
             date = ent.text
+            parsed_date = dateparser.parse(ent.text)
+            if parsed_date:
+                date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
 
     # Enhanced category extraction - use fuzzy matching for tokens
     possible_categories = [
