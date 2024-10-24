@@ -9,6 +9,7 @@ python-dotenv = "*"
 spacy = "*"
 fuzzywuzzy = "*"
 dateparser = "*"
+aiohttp = "*"
 
 [dev-packages]
 

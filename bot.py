@@ -7,6 +7,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 from dotenv import load_dotenv
 from fuzzywuzzy import process, fuzz
+from message_processing import *
 
 # Load environment variables from .env file
 load_dotenv()
@@ -45,56 +46,29 @@ async def handle_message(update: Update, context):
         await update.message.reply_text("You are not authorized to use this bot.")
         return
 
-    # Use SpaCy to parse the message
-    doc = nlp(user_message)
+    # Process the message using fuzzywuzzy method
+    parsed_data = process_message_ollama(user_message)
+    if parsed_data:
+        # change all keys to lowercase
+        parsed_data = {k.lower(): v for k, v in parsed_data.items()}
 
-    # Extract entities
-    amount = None
-    category = None
-    date = None
-    account = "personal"  # Default to 'personal' if not specified
+        # Log extracted data
+        logger.info(f"Extracted data - Amount: {parsed_data['amount']}, Category: {parsed_data['category']}, Date: {parsed_data['date']}, Account: {parsed_data['account']}")
 
-    for ent in doc.ents:
-        if ent.label_ == "MONEY":
-            amount = ent.text
-        elif ent.label_ == "DATE":
-            date = ent.text
-            parsed_date = dateparser.parse(ent.text)
-            if parsed_date:
-                date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
-
-    # Enhanced category extraction - use fuzzy matching for tokens
-    possible_categories = [
-        "lunch", "dinner", "groceries", "food", "entertainment", "transport", "rent", "utilities"
-    ]
-    highest_similarity = 0.0
-    similarity_threshold = 70  # Fuzzy matching threshold (0-100 scale)
-
-    # Use fuzzy matching to find the best category match based on token text
-    for token in doc:
-        matched_category, match_score = process.extractOne(token.text.lower(), possible_categories, scorer=fuzz.ratio)
-        if match_score > highest_similarity and match_score >= similarity_threshold:
-            highest_similarity = match_score
-            category = matched_category
-
-    # If no category is found, set a default value
-    if category is None:
-        category = "miscellaneous"
-
-    # If no date is specified, use the current datetime
-    if date is None:
-        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Log extracted data
-    logger.info(f"Extracted data - Amount: {amount}, Category: {category}, Date: {date}, Account: {account}")
-
-    # Respond to the user
-    response = f"Logged expense - Amount: {amount}, Category: {category}, Date: {date}, Account: {account}"
-    await update.message.reply_text(response)
+        # Respond to the user
+        response = f"Logged expense - Amount: {parsed_data['amount']}, Category: {parsed_data['category']}, Date: {parsed_data['date']}, Account: {parsed_data['account']}"
+        await update.message.reply_text(response)
+    else:
+        await update.message.reply_text("Failed to process message. Please try again.")
 
 def main():
     # Print a status message when the script starts
     logger.info("Starting the Telegram bot...")
+
+    # check if ollama is running
+    if not is_ollama_running():
+        logger.error("Ollama is not running.")
+        return
 
     try:
         # Create the Application and pass it your bot's token
