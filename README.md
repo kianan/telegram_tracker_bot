@@ -4,10 +4,8 @@ Kian Tracker Bot is a simple Telegram bot that helps users manage their tasks an
 
 ## Features
 - Responds to the `/start` command with a welcome message.
-- Handles user messages and extracts information like amount, date, and category using natural language processing (NLP).
-- Logs messages to the console for easy debugging.
-- Uses fuzzy matching to categorize expenses, even when spelling errors are present.
-- Includes basic error handling for failed connections and invalid bot tokens.
+- Handles user messages and logs expenses.
+- Integrates with local Llama model for enhanced data extraction from user messages.
 
 ## Setup Instructions
 
@@ -15,8 +13,10 @@ Kian Tracker Bot is a simple Telegram bot that helps users manage their tasks an
 - Python 3.9+
 - Telegram Bot Token (obtained from BotFather on Telegram)
 - `pipenv` for managing the virtual environment
+- Ollama (for local Llama model)
 
 ### Setup Steps
+
 1. **Clone the repository** and navigate to the project folder:
    ```sh
    git clone <repository-url>
@@ -26,37 +26,46 @@ Kian Tracker Bot is a simple Telegram bot that helps users manage their tasks an
 2. **Create a virtual environment** using `pipenv` and install the required dependencies:
    ```sh
    pipenv --python 3.9
-   pipenv install python-telegram-bot python-dotenv spacy fuzzywuzzy
+   pipenv install python-telegram-bot python-dotenv fuzzywuzzy spacy aiohttp dateparser
    ```
 
-3. **Download the SpaCy language model**:
+3. **Install the SpaCy language model**:
    ```sh
-   pipenv run python -m spacy download en_core_web_lg
+   python -m spacy download en_core_web_lg
    ```
 
 4. **Create a `.env` file** in the root of your project directory and add your Telegram Bot Token:
    ```
    TELEGRAM_BOT_TOKEN=your_actual_bot_token
+   AUTHORIZED_USERNAMES=username1,username2
    ```
 
-5. **Activate the virtual environment**:
+5. **Install Ollama**:
+   - Ollama is required to run the local Llama model. You can install Ollama by following the instructions on their official website: [Ollama Installation](https://ollama.com/docs/installation)
+
+6. **Run Ollama and Download Llama Model**:
+   - Start the Ollama service locally:
+     ```sh
+     ollama serve
+     ```
+   - Download the Llama model:
+     ```sh
+     ollama pull llama3.2:1b
+     ```
+
+7. **Activate the virtual environment**:
    ```sh
    pipenv shell
    ```
 
-6. **Run the bot**:
+8. **Run the bot**:
    ```sh
    python bot.py
    ```
 
-## Logging and Error Handling
-- The bot uses the `logging` module to print status messages to the console.
-- Basic error handling is included to catch issues such as incorrect bot tokens or connection problems.
-- Additional status messages are logged to indicate when the bot starts, is running, or if an error occurs.
-
 ## Usage
 - Start the bot by sending the `/start` command in Telegram.
-- You can also send any message, and the bot will extract and log relevant information like the amount, date, and category.
+- You can send any message to log expenses, and the bot will extract relevant details and store them.
 
 ## License
 This project is open source and available under the MIT License.
